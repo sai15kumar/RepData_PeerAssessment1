@@ -1,0 +1,96 @@
+#Peer Assessment 1-Reproducible Research
+This is the Markdown file for Peer Assessment-1
+
+### Load the data provided
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The variables included in this dataset are:
+
+    1. steps = Number of steps taking in a 5-minute interval (missing values are coded as NA)
+
+    2. date = The date on which the measurement was taken in YYYY-MM-DD format
+
+    3. interval: Identifier for the 5-minute interval in which measurement was taken
+
+Code for loading data:
+```{r Load the Data}
+rawdata= read.csv("activity.csv", header = TRUE)
+```
+
+##Q1 - What is mean total number of steps taken per day?
+ 
+```{r-Calculate Total Steps per day and plot Histogram}
+library(dplyr)
+comp_data = na.omit(rawdata)
+comp_data$date <- as.Date(comp_data$date)
+stepsperday <- comp_data %>%
+  group_by(date)%>%
+  summarize(totsteps = sum(steps))
+
+hist(stepsperday$totsteps,xlab = "Total Steps per day", ylab = "Count", main = "Histogram of Total steps per Day")
+```
+
+Mean and Median of Steps taken per day
+```{r - Mean and Median steps taken per day}
+meanperday <- mean(stepsperday$totsteps)
+medianperday <- median(stepsperday$totsteps)
+```
+1. Mean =`r meanperday` steps per day
+2. Median = `r medianperday` steps per day
+
+##Q2 - What is average daily activity pattern?
+```{r-time series graph}
+library(dplyr)
+avgsteps<- comp_data %>%
+  group_by(interval)%>%
+  summarize(avg = mean(steps))
+
+plot(avgsteps$interval,avgsteps$avg,type="l", xlab = "Interval", ylab = "Average Steps", main = "Time series plot Average daily steps")
+
+maxsteps<-avgsteps$interval[which.max(avgsteps$avg)]
+```
+
+5 minute interval which has max number of steps is `r maxsteps`
+
+##Q3 - Fill "NAs" using Average and plot Histogram of total Steps per day
+```{r- Fill NAs}
+nadata <- rawdata
+for (n in 1:nrow(nadata)){
+  if (is.na(nadata$steps[n])){
+    naindx <-which(nadata$interval[n]==avgsteps$interval)
+    nadata$steps[n] <- avgsteps[naindx,]$avg
+  }
+}
+nadata$date <-as.Date(nadata$date)
+```
+Histogram  Plotting
+```{r-Plot Histogram for Total Steps per day}
+stepsperday <- nadata %>%
+  group_by(date)%>%
+  summarize(totsteps = sum(steps))
+hist(stepsperday$totsteps,xlab = "Total Steps per day", ylab = "Count", main = "Histogram of Total steps per Day")
+```
+Mean and Median of Steps taken per day
+```{r - Mean and Median steps taken per day w/o NA}
+meanperday <- mean(stepsperday$totsteps)
+medianperday <- median(stepsperday$totsteps)
+```
+1. Mean =`r meanperday` steps per day
+2. Median = `r medianperday` steps per day
+
+## Q4 - Differences in Weekday and Weekend Pattern
+```{r- weekday/end avg differences}
+nadata$day <- weekdays(nadata$date)
+nadata$daytyp <- "Weekday"
+nadata$daytyp[nadata$day %in% c("Saturday","Sunday")] <- "Weekend"
+average <- nadata %>%
+  group_by(daytyp,interval) %>%
+  summarize(avgsteps=mean(steps))
+```
+Create a Panel plot to compare the Weekday and Weekend trend
+```{r- panel plot}
+library(ggplot2)
+qplot(interval,avgsteps,data=average,geom="line",xlab = "Interval", ylab = "Average Steps", main = "Average Steps taken - weekdays vs. Weekend", facets=daytyp~.)
+```
+  
+  People seem to be more active after 1000 min during the weekends. Probably they are enjoying the weekend outside
